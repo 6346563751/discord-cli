@@ -57,12 +57,8 @@ ws.on('close', function close() {
 ws.on('message', function message(data) { 
     const parsed = JSON.parse(data) 
     const {t, event, op, d} = parsed 
-    if(parsed.op === 10) loopHeartbeat(parsed.d.heartbeat_interval) 
-    switch (t) { 
-            case 'READY': 
-              Heartbeat.d = parsed.s 
-              break; 
-          } 
+    if(parsed.op === 10) loopHeartbeat(parsed.d.heartbeat_interval)
+    Heartbeat.d = parsed.s
 }) 
 
 export default ws
