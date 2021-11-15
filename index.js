@@ -1,10 +1,11 @@
 import blessed from 'blessed'
 import fetch from 'node-fetch';
 import './env.js'
+import ws from './gateaway.js'
 
 const utils = {}
 
-console.log(process.env.TOKEN)
+const destinataire = '' // id of the user to talk
 
 async function getUsername() {
   const response = await fetch(
@@ -25,7 +26,7 @@ async function getUsername() {
 
 async function fetchMessages(DISCORD_ID) {
   const response = await fetch(
-    "https://discord.com/api/v9/channels/816343656323088452/messages?limit=10",
+    "https://discord.com/api/v9/channels/"+destinataire+"/messages?limit=20",
     {
       headers: {
         authorization:
@@ -77,18 +78,17 @@ async function init() {
   utils.username = await getUsername()
 }
 
-// Create a screen object.
-var screen = blessed.screen({
+const screen = blessed.screen({
   smartCSR: true,
-});
+})
 
 screen.title = "Discord CLI";
 
 screen.key(["escape", "q", "C-c"], function (ch, key) {
   return process.exit(0);
-});
+})
 
-var list = blessed.list({
+const list = blessed.list({
   parent: screen,
   label: " {bold}{cyan-fg}Messages List{/cyan-fg}{/bold} ",
   tags: true,
@@ -124,16 +124,16 @@ var list = blessed.list({
   },
 });
 
-var form = blessed.form({
+const form = blessed.form({
   parent: screen,
   name: "form",
   left: 0,
   bottom: 0,
   width: "100%",
   height: 1,
-});
+})
 
-var input = blessed.textbox({
+const input = blessed.textbox({
   parent: form,
   name: "input",
   input: true,
@@ -156,15 +156,30 @@ var input = blessed.textbox({
 input.focus()
 
 input.on("submit", async function (v) {
-  const channel = await getChannel('600995678960877568')
-  sendDeepMessage(channel, v)
-  list.pushItem(utils.username + ' : ' + v)
+  const channel = await getChannel(destinataire)
+  utils.actual_channel = channel
+  sendDeepMessage(destinataire, v)
   input.clearValue()
   screen.render()
   return
-});
+})
 
 init()
 
 input.focus()
 screen.render()
+
+ws.on('message', function message(data) {
+  const parsed = JSON.parse(data)
+  const {t, event, op, d} = parsed
+  switch (t) {
+    case 'MESSAGE_CREATE': {
+      if(d.channel_id == destinataire) {
+        list.pushItem(d.author.username + ' : ' + d.content)
+        list.focus()
+        input.focus()
+      }
+      break;
+    }
+  }
+})
